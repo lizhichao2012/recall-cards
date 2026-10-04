@@ -1,0 +1,113 @@
+/* 全部使用 Obsidian 的主题变量，浅色和深色主题自动适配 */
+
+/* 笔记右上角图标 */
+.automem-note-action.is-ready {
+  color: var(--interactive-accent);
+}
+.automem-note-action.is-changed {
+  color: var(--text-warning);
+}
+.automem-note-action.is-busy svg {
+  animation: automem-spin 1.2s linear infinite;
+}
+@keyframes automem-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 卡片 */
+.automem-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  padding: var(--size-4-3);
+}
+.automem-empty {
+  color: var(--text-muted);
+}
+.automem-header h4 {
+  margin: 0 0 var(--size-4-1);
+}
+.automem-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.automem-badge {
+  padding: 0 var(--size-4-1);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.automem-warning {
+  padding: var(--size-4-2);
+  border-radius: var(--radius-s);
+  background: rgba(var(--color-red-rgb), 0.12);
+  color: var(--text-error);
+}
+.automem-open-source {
+  align-self: flex-start;
+}
+
+.automem-questions {
+  margin: 0;
+  padding-left: var(--size-4-5);
+}
+.automem-question {
+  margin-bottom: var(--size-4-4);
+}
+.automem-question-text p,
+.automem-answer p {
+  margin: 0 0 var(--size-4-1);
+}
+.automem-answer {
+  margin: var(--size-4-1) 0;
+  padding: var(--size-4-2);
+  border-left: 3px solid var(--interactive-accent);
+  background: var(--background-secondary);
+  border-radius: var(--radius-s);
+}
+.automem-answer.is-hidden {
+  display: none;
+}
+.automem-toggle {
+  font-size: var(--font-ui-small);
+}
+
+.automem-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: var(--size-4-3);
+}
+.automem-ratings {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--size-4-2);
+}
+.automem-ratings button.is-selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.automem-result {
+  color: var(--text-muted);
+}
+.automem-next {
+  align-self: flex-end;
+}
+
+/* 时间轴 */
+.automem-timeline {
+  width: 100%;
+  border-collapse: collapse;
+}
+.automem-timeline th,
+.automem-timeline td {
+  padding: var(--size-4-1) var(--size-4-2);
+  border-bottom: 1px solid var(--background-modifier-border);
+  text-align: left;
+}
