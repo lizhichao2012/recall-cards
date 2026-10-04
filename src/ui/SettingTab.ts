@@ -1,7 +1,7 @@
 // 设置页。设置项的类型和校验在 src/settings.ts。
 
 import { App, PluginSettingTab, Setting, type Plugin } from "obsidian";
-import { providerOptions } from "../llm/providers";
+import { baseUrlAfterSwitch, providerInfo, providerOptions } from "../llm/providers";
 import type { ProviderId } from "../llm/types";
 import { normalizeDir, parseIntervals, type Settings } from "../settings";
 
@@ -29,33 +29,44 @@ export class AutomemSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("LLM").setHeading();
 
+    const provider = providerInfo(s.llm.provider);
+
     new Setting(containerEl).setName("服务商").addDropdown((d) => {
       for (const { id, label } of providerOptions()) d.addOption(id, label);
       d.setValue(s.llm.provider).onChange(async (v) => {
-        s.llm.provider = v as ProviderId;
+        const id = v as ProviderId;
+        s.llm.baseUrl = baseUrlAfterSwitch(s.llm.baseUrl, id);
+        s.llm.provider = id;
         await save();
+        this.display(); // 刷新 base URL、模型提示等随服务商变化的内容
       });
     });
 
     new Setting(containerEl)
       .setName("Base URL")
-      .setDesc("例如 https://api.openai.com/v1、https://api.deepseek.com/v1、http://localhost:11434/v1")
+      .setDesc(provider.baseUrlHint)
       .addText((t) =>
-        t.setValue(s.llm.baseUrl).onChange(async (v) => {
-          s.llm.baseUrl = v.trim();
-          await save();
-        }),
+        t
+          .setPlaceholder(provider.defaultBaseUrl)
+          .setValue(s.llm.baseUrl)
+          .onChange(async (v) => {
+            s.llm.baseUrl = v.trim();
+            await save();
+          }),
       );
 
-    new Setting(containerEl).setName("Model").addText((t) =>
-      t
-        .setPlaceholder("gpt-4o-mini")
-        .setValue(s.llm.model)
-        .onChange(async (v) => {
-          s.llm.model = v.trim();
-          await save();
-        }),
-    );
+    new Setting(containerEl)
+      .setName("Model")
+      .setDesc(s.llm.provider === "anthropic" ? `留空时使用 ${provider.modelPlaceholder}` : "")
+      .addText((t) =>
+        t
+          .setPlaceholder(provider.modelPlaceholder)
+          .setValue(s.llm.model)
+          .onChange(async (v) => {
+            s.llm.model = v.trim();
+            await save();
+          }),
+      );
 
     new Setting(containerEl)
       .setName("API key")
@@ -68,16 +79,18 @@ export class AutomemSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(containerEl).setName("Temperature").addSlider((sl) =>
-      sl
-        .setLimits(0, 1, 0.1)
-        .setValue(s.llm.temperature)
-        .setDynamicTooltip()
-        .onChange(async (v) => {
-          s.llm.temperature = v;
-          await save();
-        }),
-    );
+    if (provider.usesTemperature) {
+      new Setting(containerEl).setName("Temperature").addSlider((sl) =>
+        sl
+          .setLimits(0, 1, 0.1)
+          .setValue(s.llm.temperature)
+          .setDynamicTooltip()
+          .onChange(async (v) => {
+            s.llm.temperature = v;
+            await save();
+          }),
+      );
+    }
 
     new Setting(containerEl).setName("出题").setHeading();
 

@@ -10,13 +10,14 @@ export interface ChatProvider {
 }
 
 /** 服务商标识。新增服务商：在这里加一项，并在 providers/index.ts 注册。 */
-export type ProviderId = "openai-compatible";
+export type ProviderId = "openai-compatible" | "anthropic";
 
 export interface LLMConfig {
   provider: ProviderId;
   baseUrl: string;
   model: string;
   apiKey: string;
+  /** 只对 OpenAI 兼容接口生效；Claude 新模型不接受 temperature 参数 */
   temperature: number;
 }
 
@@ -31,6 +32,8 @@ export interface HttpRequest {
 export interface HttpResponse {
   status: number;
   text: string;
+  /** 响应头；SDK 会读取 retry-after、request-id 等 */
+  headers?: Record<string, string>;
 }
 
 export type HttpClient = (req: HttpRequest) => Promise<HttpResponse>;

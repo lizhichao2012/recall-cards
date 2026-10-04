@@ -14,6 +14,21 @@ npm run deploy    # 打包并复制到笔记库的插件目录
 
 `npm run deploy` 默认复制到 `/Users/zhichaoli/obsvan`，可以用环境变量指定其他笔记库：`AUTOMEM_VAULT=/path/to/vault npm run deploy`。它只写入 `<笔记库>/.obsidian/plugins/automem/` 下的三个文件（`main.js`、`manifest.json`、`styles.css`），不碰其他内容。复制后在 Obsidian 中关闭再开启插件即可生效。
 
+## LLM 服务商
+
+在设置页的"服务商"中选择：
+
+| 服务商 | 适用 | Base URL | 默认模型 |
+|---|---|---|---|
+| OpenAI 兼容接口 | OpenAI、DeepSeek、通义、Ollama 等 | 如 `https://api.openai.com/v1` | 需要填写 |
+| Claude 格式接口 | Anthropic 官方 API，或兼容 Claude 格式的中转服务 | 官方填 `https://api.anthropic.com`；中转填它提供的地址，结尾的 `/v1` 可写可不写 | 留空时用 `claude-opus-5-5` |
+
+Claude 格式接口的说明：
+
+- 使用官方 SDK `@anthropic-ai/sdk`，请求通过 Obsidian 的 `requestUrl` 发出，所以中转服务没有 CORS 头也能用。
+- 不发送 temperature（Claude 新模型不接受这个参数），设置页选 Claude 时会隐藏这一项。
+- 连接官方 API 且模型是 `claude-opus-5-5`、`claude-opus-5`、`claude-sonnet-5-5` 或 `claude-fable-5-1` 时，会开启服务端拒答兜底（`fallbacks: "default"`）：模型拒答时自动换一个模型重试。中转服务不开启，因为它们可能不认识这个参数。
+
 ## 模块划分
 
 依赖方向是从上往下：界面层依赖业务层，业务层只依赖接口。`core/`、`llm/`、`review/`、`push/`、`storage/` 都不引用 `obsidian`，可以直接做单元测试。
@@ -40,7 +55,10 @@ src/
 │   ├── parse.ts            校验 LLM 输出
 │   ├── errors.ts           出题错误类型
 │   ├── types.ts            ChatProvider / HttpClient 接口
+│   ├── fetchAdapter.ts     把 HttpClient 包装成 fetch，供 SDK 使用
 │   └── providers/          各 LLM 服务商的实现和注册表
+│       ├── openaiCompatible.ts  OpenAI 兼容接口（/chat/completions）
+│       └── anthropic.ts         Claude 格式接口（/v1/messages，官方 SDK）
 │
 ├── storage/MemoryStore.ts  读写 <记忆目录>/<noteId>.json
 ├── identity/               笔记身份管理

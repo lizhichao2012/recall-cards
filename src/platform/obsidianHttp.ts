@@ -11,5 +11,5 @@ export const obsidianHttp: HttpClient = async (req) => {
     body: req.body,
     throw: false,
   });
-  return { status: res.status, text: res.text };
+  return { status: res.status, text: res.text, headers: res.headers };
 };
