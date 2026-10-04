@@ -83,6 +83,11 @@ export class CardView extends ItemView {
     this.render();
   }
 
+  /** 源笔记被删除、重命名后重新渲染，更新标题和按钮可用状态 */
+  rerender(): void {
+    if (this.state && !this.state.submitting) this.render();
+  }
+
   /** 记忆文件被更新（例如重新生成）时刷新内容 */
   updateMemory(memory: MemoryFile): void {
     if (this.state?.memory.noteId !== memory.noteId) return;

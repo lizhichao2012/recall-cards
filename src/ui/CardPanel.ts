@@ -38,4 +38,9 @@ export class CardPanel implements CardPresenter {
   refresh(memory: MemoryFile): void {
     this.view()?.updateMemory(memory);
   }
+
+  /** 笔记索引变化（删除、重命名）后重新渲染 */
+  rerender(): void {
+    this.view()?.rerender();
+  }
 }

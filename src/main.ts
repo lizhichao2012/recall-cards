@@ -110,7 +110,10 @@ export default class AutomemPlugin extends Plugin implements SettingsHost {
     // 身份管理
     this.watcher = new IdentityWatcher(this.app, index, this.store, review, () => this.settings.changeDebounceMs, {
       onNoteChanged: (path) => this.noteActions.refreshPath(path),
-      onIndexChanged: () => this.refreshStatusBar(),
+      onIndexChanged: () => {
+        this.refreshStatusBar();
+        cards.rerender();
+      },
     });
 
     this.app.workspace.onLayoutReady(() => void this.start());
