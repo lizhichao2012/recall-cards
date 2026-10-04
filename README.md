@@ -9,9 +9,10 @@ npm install
 npm test          # 单元测试（调度、出题校验、推送、业务流程）
 npm run build     # 类型检查 + 打包，生成 main.js
 npm run dev       # 监听修改，自动重新打包
+npm run deploy    # 打包并复制到笔记库的插件目录
 ```
 
-安装到 vault：把 `main.js`、`manifest.json`、`styles.css` 复制到 `<vault>/.obsidian/plugins/automem/`，然后在 Obsidian 设置 → 第三方插件中启用。也可以把整个项目目录软链接到那里，配合 `npm run dev` 使用。
+`npm run deploy` 默认复制到 `/Users/zhichaoli/obsvan`，可以用环境变量指定其他笔记库：`AUTOMEM_VAULT=/path/to/vault npm run deploy`。它只写入 `<笔记库>/.obsidian/plugins/automem/` 下的三个文件（`main.js`、`manifest.json`、`styles.css`），不碰其他内容。复制后在 Obsidian 中关闭再开启插件即可生效。
 
 ## 模块划分
 
