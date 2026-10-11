@@ -61,7 +61,7 @@ export class TimelineModal extends Modal {
       return;
     }
     this.contentEl.createEl("p", { text: "假设每次都在到期当天点“记得”，未来的复习日期：" });
-    const table = this.contentEl.createEl("table", { cls: "automem-timeline" });
+    const table = this.contentEl.createEl("table", { cls: "recall-cards-timeline" });
     const head = table.createEl("tr");
     head.createEl("th", { text: "次序" });
     head.createEl("th", { text: "日期" });

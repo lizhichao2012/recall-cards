@@ -52,7 +52,7 @@ describe("PushController", () => {
   };
 
   beforeEach(async () => {
-    store = new VaultMemoryStore(new MemoryAdapter(), () => "automem");
+    store = new VaultMemoryStore(new MemoryAdapter(), () => "recall-cards");
     for (const [id, next] of [
       ["a", "2026-10-06"],
       ["b", "2026-10-07"],

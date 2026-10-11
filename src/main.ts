@@ -19,7 +19,7 @@ import { CardPanel } from "./ui/CardPanel";
 import { CARD_VIEW_TYPE, CardView } from "./ui/CardView";
 import { NoteActions } from "./ui/NoteActions";
 import { ReviewActions } from "./ui/ReviewActions";
-import { AutomemSettingTab, type SettingsHost } from "./ui/SettingTab";
+import { RecallCardsSettingTab, type SettingsHost } from "./ui/SettingTab";
 import { StatusBar } from "./ui/StatusBar";
 
 /** data.json 的结构 */
@@ -28,7 +28,7 @@ interface PluginData {
   quota: DailyCount | null;
 }
 
-export default class AutomemPlugin extends Plugin implements SettingsHost {
+export default class RecallCardsPlugin extends Plugin implements SettingsHost {
   override settings!: Settings;
   private quota: DailyCount | null = null;
 
@@ -88,6 +88,7 @@ export default class AutomemPlugin extends Plugin implements SettingsHost {
       cards,
       notes,
       intervals: () => this.settings.intervals,
+      clock: this.clock,
       onChanged: (path) => {
         if (path) this.noteActions.refreshPath(path);
         this.refreshStatusBar();
@@ -96,7 +97,7 @@ export default class AutomemPlugin extends Plugin implements SettingsHost {
     this.registerView(CARD_VIEW_TYPE, (leaf) => new CardView(leaf, actions));
     this.noteActions = new NoteActions(this.app, review, actions);
     this.statusBar = new StatusBar(this.addStatusBarItem(), () => void this.push.openFromQueue());
-    this.addSettingTab(new AutomemSettingTab(this.app, this, this));
+    this.addSettingTab(new RecallCardsSettingTab(this.app, this, this));
     registerCommands(this, {
       actions,
       push: this.push,
@@ -137,7 +138,7 @@ export default class AutomemPlugin extends Plugin implements SettingsHost {
   async reloadMemory(): Promise<void> {
     const report = await this.store.loadAll();
     if (report.errors.length > 0) {
-      console.warn("[automem] 无法读取的记忆文件", report.errors);
+      console.warn("[recall-cards] 无法读取的记忆文件", report.errors);
       new Notice(`有 ${report.errors.length} 个记忆文件无法读取，详情见开发者控制台`);
     }
     await this.watcher.rebuild();

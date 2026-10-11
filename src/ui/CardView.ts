@@ -3,11 +3,11 @@
 
 import { Component, ItemView, MarkdownRenderer, type WorkspaceLeaf } from "obsidian";
 import { intervalOf } from "../core/scheduler";
-import type { MemoryFile, Rating } from "../core/types";
+import type { DateStr, MemoryFile, Rating } from "../core/types";
 import type { CardMode } from "../push/PushController";
-import { noteName } from "./format";
+import { describeRatingEffect, noteName } from "./format";
 
-export const CARD_VIEW_TYPE = "automem-card";
+export const CARD_VIEW_TYPE = "recall-cards-view";
 
 export interface CardController {
   /** 提交反馈，成功返回更新后的记忆文件，失败返回 null（错误提示由实现方负责） */
@@ -19,6 +19,8 @@ export interface CardController {
   /** 卡片未反馈就被关闭或被替换 */
   dismissed(noteId: string, mode: CardMode): void;
   intervals(): readonly number[];
+  /** 今天的日期（调试时可能是模拟日期），用于推算反馈后的下次复习时间 */
+  today(): DateStr;
 }
 
 const RATING_BUTTONS: { rating: Rating; label: string; hint: string }[] = [
@@ -112,12 +114,12 @@ export class CardView extends ItemView {
 
     const root = this.contentEl;
     root.empty();
-    root.addClass("automem-card");
+    root.addClass("recall-cards-view");
 
     const state = this.state;
     if (!state) {
       root.createDiv({
-        cls: "automem-empty",
+        cls: "recall-cards-empty",
         text: "当前没有打开的卡片。点击笔记右上角的复习图标，或点击状态栏的“待复习”打开卡片。",
       });
       return;
@@ -128,10 +130,10 @@ export class CardView extends ItemView {
     this.renderHeader(root, memory, state.mode, path);
 
     if (!path) {
-      root.createDiv({ cls: "automem-warning", text: "源笔记已被删除，无法反馈。" });
+      root.createDiv({ cls: "recall-cards-warning", text: "源笔记已被删除，无法反馈。" });
     }
 
-    const openBtn = root.createEl("button", { cls: "automem-open-source", text: "打开原笔记" });
+    const openBtn = root.createEl("button", { cls: "recall-cards-open-source", text: "打开原笔记" });
     openBtn.disabled = !path;
     openBtn.onclick = () => this.controller.openSource(memory.noteId);
 
@@ -140,11 +142,11 @@ export class CardView extends ItemView {
   }
 
   private renderHeader(root: HTMLElement, memory: MemoryFile, mode: CardMode, path: string | null): void {
-    const header = root.createDiv({ cls: "automem-header" });
+    const header = root.createDiv({ cls: "recall-cards-header" });
     header.createEl("h4", { text: noteName(path ?? memory.source) });
     const s = memory.schedule;
-    const meta = header.createDiv({ cls: "automem-meta" });
-    meta.createSpan({ cls: "automem-badge", text: mode === "push" ? "推送" : "手动" });
+    const meta = header.createDiv({ cls: "recall-cards-meta" });
+    meta.createSpan({ cls: "recall-cards-badge", text: mode === "push" ? "推送" : "手动" });
     meta.createSpan({ text: `第 ${s.level + 1} 档（间隔 ${intervalOf(s.level, this.controller.intervals())} 天）` });
     meta.createSpan({
       text: s.status === "mastered" ? "已进入长期记忆" : `下次复习：${s.nextreviewtime ?? "—"}`,
@@ -152,16 +154,16 @@ export class CardView extends ItemView {
   }
 
   private renderQuestions(root: HTMLElement, state: CardState, sourcePath: string): void {
-    const list = root.createEl("ol", { cls: "automem-questions" });
+    const list = root.createEl("ol", { cls: "recall-cards-questions" });
     state.memory.questions.forEach((q, i) => {
-      const item = list.createEl("li", { cls: "automem-question" });
-      const questionEl = item.createDiv({ cls: "automem-question-text" });
+      const item = list.createEl("li", { cls: "recall-cards-question" });
+      const questionEl = item.createDiv({ cls: "recall-cards-question-text" });
       void MarkdownRenderer.render(this.app, q.question, questionEl, sourcePath, this.renderScope!);
 
-      const answerEl = item.createDiv({ cls: "automem-answer" });
+      const answerEl = item.createDiv({ cls: "recall-cards-answer" });
       void MarkdownRenderer.render(this.app, q.answer, answerEl, sourcePath, this.renderScope!);
 
-      const toggle = item.createEl("button", { cls: "automem-toggle" });
+      const toggle = item.createEl("button", { cls: "recall-cards-toggle" });
       const sync = () => {
         const shown = state.revealed.has(i);
         answerEl.toggleClass("is-hidden", !shown);
@@ -177,13 +179,17 @@ export class CardView extends ItemView {
   }
 
   private renderFooter(root: HTMLElement, state: CardState, sourceExists: boolean): void {
-    const footer = root.createDiv({ cls: "automem-footer" });
-    const buttons = footer.createDiv({ cls: "automem-ratings" });
+    const footer = root.createDiv({ cls: "recall-cards-footer" });
+    const buttons = footer.createDiv({ cls: "recall-cards-ratings" });
     const enabled = state.phase === "pending" && sourceExists && !state.submitting;
 
     for (const { rating, label, hint } of RATING_BUTTONS) {
-      const btn = buttons.createEl("button", { text: label, attr: { "aria-label": hint } });
-      btn.addClass(`automem-rating-${rating}`);
+      // 待反馈时提示点击后的曲线变化；已反馈后档位已更新，只保留说明
+      const tooltip = enabled
+        ? `${hint}\n点击后：${describeRatingEffect(state.memory.schedule, rating, this.controller.today(), this.controller.intervals())}`
+        : hint;
+      const btn = buttons.createEl("button", { text: label, attr: { "aria-label": tooltip } });
+      btn.addClass(`recall-cards-rating-${rating}`);
       if (state.memory.schedule.memory === rating && state.phase === "answered") btn.addClass("is-selected");
       btn.disabled = !enabled;
       btn.onclick = () => this.submit(state, rating);
@@ -192,12 +198,12 @@ export class CardView extends ItemView {
     if (state.phase === "answered") {
       const s = state.memory.schedule;
       footer.createDiv({
-        cls: "automem-result",
+        cls: "recall-cards-result",
         text: s.status === "mastered" ? "已进入长期记忆" : `下次复习：${s.nextreviewtime}`,
       });
       const noteId = state.memory.noteId;
       if (this.controller.hasNext(noteId)) {
-        const next = footer.createEl("button", { cls: "mod-cta automem-next", text: "下一张" });
+        const next = footer.createEl("button", { cls: "mod-cta recall-cards-next", text: "下一张" });
         next.onclick = () => this.controller.openNext(noteId);
       }
     }

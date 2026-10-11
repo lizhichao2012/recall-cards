@@ -45,7 +45,7 @@ describe("ReviewService", () => {
 
   beforeEach(() => {
     adapter = new MemoryAdapter();
-    store = new VaultMemoryStore(adapter, () => "automem");
+    store = new VaultMemoryStore(adapter, () => "recall-cards");
     index = new NoteIndex();
     notes = new FakeNotes(index, store);
     clock = new SystemClock();
@@ -74,7 +74,7 @@ describe("ReviewService", () => {
     expect(m.noteId).toBe("id1");
     expect(m.schedule.nextreviewtime).toBe("2026-10-04");
     expect(index.idOf("a.md")).toBe("id1");
-    expect(adapter.files.has("automem/id1.json")).toBe(true);
+    expect(adapter.files.has("recall-cards/id1.json")).toBe(true);
     expect(await review.statusOf("a.md")).toBe("ready");
   });
 
@@ -132,7 +132,7 @@ describe("ReviewService", () => {
     expect(after.schedule).toMatchObject({ level: 1, nextreviewtime: "2026-10-06", memory: "good" });
     expect(after.history).toEqual([{ date: "2026-10-04", rating: "good", manual: true }]);
     // 重启后数据一致
-    const reloaded = new VaultMemoryStore(adapter, () => "automem");
+    const reloaded = new VaultMemoryStore(adapter, () => "recall-cards");
     await reloaded.loadAll();
     expect(reloaded.get(m.noteId)).toEqual(after);
   });
@@ -162,7 +162,7 @@ describe("ReviewService", () => {
 
   it("加载时跳过损坏的记忆文件", async () => {
     await store.save(makeMemory("good"));
-    adapter.files.set("automem/bad.json", "{oops");
+    adapter.files.set("recall-cards/bad.json", "{oops");
     const report = await store.loadAll();
     expect(report.loaded).toBe(1);
     expect(report.errors).toHaveLength(1);

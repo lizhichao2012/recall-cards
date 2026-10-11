@@ -5,7 +5,7 @@ export class StatusBar {
     private readonly el: HTMLElement,
     onClick: () => void,
   ) {
-    el.addClass("mod-clickable", "automem-status");
+    el.addClass("mod-clickable", "recall-cards-status");
     el.setAttribute("aria-label", "打开待复习的卡片");
     el.onclick = onClick;
   }

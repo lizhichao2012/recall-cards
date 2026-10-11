@@ -1,112 +1,112 @@
 /* 全部使用 Obsidian 的主题变量，浅色和深色主题自动适配 */
 
 /* 笔记右上角图标 */
-.automem-note-action.is-ready {
+.recall-cards-note-action.is-ready {
   color: var(--interactive-accent);
 }
-.automem-note-action.is-changed {
+.recall-cards-note-action.is-changed {
   color: var(--text-warning);
 }
-.automem-note-action.is-busy svg {
-  animation: automem-spin 1.2s linear infinite;
+.recall-cards-note-action.is-busy svg {
+  animation: recall-cards-spin 1.2s linear infinite;
 }
-@keyframes automem-spin {
+@keyframes recall-cards-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 /* 卡片 */
-.automem-card {
+.recall-cards-view {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-3);
   padding: var(--size-4-3);
 }
-.automem-empty {
+.recall-cards-empty {
   color: var(--text-muted);
 }
-.automem-header h4 {
+.recall-cards-header h4 {
   margin: 0 0 var(--size-4-1);
 }
-.automem-meta {
+.recall-cards-meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--size-4-2);
   color: var(--text-muted);
   font-size: var(--font-ui-small);
 }
-.automem-badge {
+.recall-cards-badge {
   padding: 0 var(--size-4-1);
   border-radius: var(--radius-s);
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
-.automem-warning {
+.recall-cards-warning {
   padding: var(--size-4-2);
   border-radius: var(--radius-s);
   background: rgba(var(--color-red-rgb), 0.12);
   color: var(--text-error);
 }
-.automem-open-source {
+.recall-cards-open-source {
   align-self: flex-start;
 }
 
-.automem-questions {
+.recall-cards-questions {
   margin: 0;
   padding-left: var(--size-4-5);
 }
-.automem-question {
+.recall-cards-question {
   margin-bottom: var(--size-4-4);
 }
-.automem-question-text p,
-.automem-answer p {
+.recall-cards-question-text p,
+.recall-cards-answer p {
   margin: 0 0 var(--size-4-1);
 }
-.automem-answer {
+.recall-cards-answer {
   margin: var(--size-4-1) 0;
   padding: var(--size-4-2);
   border-left: 3px solid var(--interactive-accent);
   background: var(--background-secondary);
   border-radius: var(--radius-s);
 }
-.automem-answer.is-hidden {
+.recall-cards-answer.is-hidden {
   display: none;
 }
-.automem-toggle {
+.recall-cards-toggle {
   font-size: var(--font-ui-small);
 }
 
-.automem-footer {
+.recall-cards-footer {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2);
   border-top: 1px solid var(--background-modifier-border);
   padding-top: var(--size-4-3);
 }
-.automem-ratings {
+.recall-cards-ratings {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--size-4-2);
 }
-.automem-ratings button.is-selected {
+.recall-cards-ratings button.is-selected {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
-.automem-result {
+.recall-cards-result {
   color: var(--text-muted);
 }
-.automem-next {
+.recall-cards-next {
   align-self: flex-end;
 }
 
 /* 时间轴 */
-.automem-timeline {
+.recall-cards-timeline {
   width: 100%;
   border-collapse: collapse;
 }
-.automem-timeline th,
-.automem-timeline td {
+.recall-cards-timeline th,
+.recall-cards-timeline td {
   padding: var(--size-4-1) var(--size-4-2);
   border-bottom: 1px solid var(--background-modifier-border);
   text-align: left;

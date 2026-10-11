@@ -12,7 +12,7 @@ export interface SettingsHost {
   reloadMemory(): Promise<void>;
 }
 
-export class AutomemSettingTab extends PluginSettingTab {
+export class RecallCardsSettingTab extends PluginSettingTab {
   constructor(
     app: App,
     plugin: Plugin,
@@ -70,7 +70,7 @@ export class AutomemSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("API key")
-      .setDesc("API key 以明文保存在 .obsidian/plugins/automem/data.json。如果 vault 通过 git 或云盘同步，key 会一起被同步出去。")
+      .setDesc("API key 以明文保存在 .obsidian/plugins/recall-cards/data.json。如果 vault 通过 git 或云盘同步，key 会一起被同步出去。")
       .addText((t) => {
         t.inputEl.type = "password";
         t.setValue(s.llm.apiKey).onChange(async (v) => {

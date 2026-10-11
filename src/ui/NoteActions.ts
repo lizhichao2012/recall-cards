@@ -65,7 +65,7 @@ export class NoteActions {
   private ensure(view: MarkdownView): void {
     if (this.buttons.has(view)) return;
     const el = view.addAction("brain", LOOK.none.tooltip, (evt) => void this.onClick(view, evt));
-    el.addClass("automem-note-action");
+    el.addClass("recall-cards-note-action");
     this.buttons.set(view, el);
   }
 

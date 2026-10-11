@@ -29,7 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
     apiKey: "",
     temperature: 0.3,
   },
-  memoryDir: "automem",
+  memoryDir: "recall-cards",
   dailyLimit: 3,
   intervals: [...DEFAULT_INTERVALS],
   maxBodyChars: 20000,

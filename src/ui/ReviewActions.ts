@@ -2,7 +2,8 @@
 // 负责把 ReviewService / PushController 的结果转成提示，并通知界面刷新。
 
 import { Notice, TFile, type App } from "obsidian";
-import type { Rating, MemoryFile } from "../core/types";
+import type { Clock } from "../core/clock";
+import type { DateStr, Rating, MemoryFile } from "../core/types";
 import { previewTimeline } from "../core/scheduler";
 import type { CardMode, PushController } from "../push/PushController";
 import type { NoteGateway } from "../review/ports";
@@ -20,6 +21,7 @@ export interface ReviewActionsDeps {
   cards: CardPanel;
   notes: NoteGateway;
   intervals: () => readonly number[];
+  clock: Clock;
   /** 记忆文件或笔记状态变化后刷新界面 */
   onChanged: (path?: string) => void;
 }
@@ -141,8 +143,12 @@ export class ReviewActions implements NoteActionHandlers, CardController {
     return this.deps.intervals();
   }
 
+  today(): DateStr {
+    return this.deps.clock.today();
+  }
+
   private fail(title: string, e: unknown): void {
-    console.error("[automem]", title, e);
+    console.error("[recall-cards]", title, e);
     new Notice(`${title}：${e instanceof Error ? e.message : String(e)}`, 8000);
   }
 }
