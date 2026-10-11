@@ -1,94 +1,76 @@
-# AutoMem 笔记复习
+# Recall Cards
 
-Obsidian 插件：让 LLM 根据笔记出题，按记忆曲线推送复习卡片。需求和规则见 [设计方案](./%23%20笔记复习插件设计方案.md)。
+An Obsidian plugin that turns your notes into active-recall questions with an LLM, then brings them back on a spaced-repetition schedule.
 
-## 开发
+[中文说明](./README.zh-CN.md)
+
+> **Note:** the plugin interface is currently in Chinese only.
+
+## How it works
+
+1. Open a note and click the brain icon in the top-right corner, then choose **Generate recall** (生成回忆). An LLM reads the note and writes 3–7 questions with answers. Questions focus on "why", "how" and "what's the difference", and every answer must be grounded in the note.
+2. The questions open as a card in the right sidebar. Try to answer each one, reveal the answer, and rate how well you remembered:
+
+   | Button | Meaning | What happens to the schedule |
+   |---|---|---|
+   | 忘了 Forgot | Couldn't recall most of it | The curve resets to stage 1 (review again in 1 day) |
+   | 模糊 Fuzzy | Needed the answer or the note | Stays at the current stage |
+   | 记得 Good | Answered correctly | Moves up one stage |
+   | 简单 Easy | Effortless | Marked as mastered, no more reviews |
+
+   Hovering over a button shows exactly how the schedule will change and the next review date.
+3. Cards come back when they're due. The default intervals are 1, 2, 4, 7, 15, 30 and 60 days. The plugin checks for due cards every 30 minutes and shows at most 3 per day. The status bar shows how many cards are waiting.
+4. If you edit a note after generating questions, the icon changes color. You can then regenerate the questions and keep your progress, regenerate and restart the curve, or ignore the change.
+
+## Installation
+
+The plugin isn't in the Community Plugins directory yet. To install it manually:
+
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](../../releases/latest).
+2. Copy them into `<your vault>/.obsidian/plugins/recall-cards/`.
+3. Reload Obsidian and enable **Recall Cards** under **Settings → Community plugins**.
+
+You can also install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat) using this repository's URL.
+
+Desktop only.
+
+## Setup
+
+Open **Settings → Recall Cards** and configure an LLM provider:
+
+| Provider | Works with | Base URL |
+|---|---|---|
+| OpenAI-compatible | OpenAI, DeepSeek, Qwen, Ollama, and other `/chat/completions` APIs | e.g. `https://api.openai.com/v1` |
+| Claude format | The Anthropic API, or proxies that speak the Claude Messages API | `https://api.anthropic.com`, or your proxy's URL |
+
+Then fill in the model name and API key. With the Claude format, an empty model field defaults to `claude-opus-5-5`.
+
+Other settings: the review intervals, daily push limit, number of questions per note, maximum note length, and the folder where review data is stored.
+
+## Privacy and data
+
+- **Note content is sent to the LLM provider you configure**, and only when you generate or regenerate questions. The plugin makes no other network requests: no telemetry, no analytics.
+- **Your API key is stored in plain text** in `.obsidian/plugins/recall-cards/data.json`. If you sync your vault with git or a cloud service, the key is synced too.
+- **The plugin writes to your vault:**
+  - A `review-id` field is added to the frontmatter of each note you generate questions for. It keeps the note linked to its questions after you rename or move it.
+  - Questions and review history are stored as JSON files in a `recall-cards/` folder. You can change the folder in settings.
+
+## Development
 
 ```bash
 npm install
-npm test          # 单元测试（调度、出题校验、推送、业务流程）
-npm run build     # 类型检查 + 打包，生成 main.js
-npm run dev       # 监听修改，自动重新打包
-npm run deploy    # 打包并复制到笔记库的插件目录
+npm test          # unit tests
+npm run build     # type check + bundle into main.js
+npm run dev       # rebuild on change
+npm run deploy    # build and copy into a vault's plugin folder
 ```
 
-`npm run deploy` 默认复制到 `/Users/zhichaoli/obsvan`，可以用环境变量指定其他笔记库：`AUTOMEM_VAULT=/path/to/vault npm run deploy`。它只写入 `<笔记库>/.obsidian/plugins/automem/` 下的三个文件（`main.js`、`manifest.json`、`styles.css`），不碰其他内容。复制后在 Obsidian 中关闭再开启插件即可生效。
+`npm run deploy` reads the vault path from the `RECALL_CARDS_VAULT` environment variable or from a `.vault-path` file in the project root. `.vault-path` is git-ignored.
 
-## LLM 服务商
+To release, run `npm version patch` (or `minor` / `major`). This updates `manifest.json` and `versions.json`. Then push the tag: `git push --follow-tags`. GitHub Actions builds the plugin and creates a draft release.
 
-在设置页的"服务商"中选择：
+The module layout and design notes are in the [Chinese README](./README.zh-CN.md#开发) and the [design document](./笔记复习插件设计方案.md), both in Chinese.
 
-| 服务商 | 适用 | Base URL | 默认模型 |
-|---|---|---|---|
-| OpenAI 兼容接口 | OpenAI、DeepSeek、通义、Ollama 等 | 如 `https://api.openai.com/v1` | 需要填写 |
-| Claude 格式接口 | Anthropic 官方 API，或兼容 Claude 格式的中转服务 | 官方填 `https://api.anthropic.com`；中转填它提供的地址，结尾的 `/v1` 可写可不写 | 留空时用 `claude-opus-5-5` |
+## License
 
-Claude 格式接口的说明：
-
-- 使用官方 SDK `@anthropic-ai/sdk`，请求通过 Obsidian 的 `requestUrl` 发出，所以中转服务没有 CORS 头也能用。
-- 不发送 temperature（Claude 新模型不接受这个参数），设置页选 Claude 时会隐藏这一项。
-- 连接官方 API 且模型是 `claude-opus-5-5`、`claude-opus-5`、`claude-sonnet-5-5` 或 `claude-fable-5-1` 时，会开启服务端拒答兜底（`fallbacks: "default"`）：模型拒答时自动换一个模型重试。中转服务不开启，因为它们可能不认识这个参数。
-
-## 模块划分
-
-依赖方向是从上往下：界面层依赖业务层，业务层只依赖接口。`core/`、`llm/`、`review/`、`push/`、`storage/` 都不引用 `obsidian`，可以直接做单元测试。
-
-```
-src/
-├── main.ts                 组合根：创建各模块并连起来，不写业务逻辑
-├── settings.ts             设置的类型、默认值、校验
-├── commands.ts             命令面板中的命令
-│
-├── core/                   纯逻辑，不依赖 Obsidian
-│   ├── types.ts            记忆文件的数据结构（设计方案 4.3）
-│   ├── scheduler.ts        记忆曲线：反馈 → 新状态（2.2.3 规则表）
-│   ├── picker.ts           选出今天要推送的卡片
-│   ├── quota.ts            每日推送额度
-│   ├── noteBody.ts         去 frontmatter、规范化、SHA-256、提取二级标题
-│   ├── memoryFile.ts       记忆文件的创建、校验、版本迁移
-│   ├── date.ts             日期加减（按天，本地时区）
-│   └── clock.ts            "今天"，支持调试时模拟日期
-│
-├── llm/                    出题
-│   ├── generator.ts        长度检查 → 拼 prompt → 调用 LLM → 校验
-│   ├── prompt.ts           出题 prompt
-│   ├── parse.ts            校验 LLM 输出
-│   ├── errors.ts           出题错误类型
-│   ├── types.ts            ChatProvider / HttpClient 接口
-│   ├── fetchAdapter.ts     把 HttpClient 包装成 fetch，供 SDK 使用
-│   └── providers/          各 LLM 服务商的实现和注册表
-│       ├── openaiCompatible.ts  OpenAI 兼容接口（/chat/completions）
-│       └── anthropic.ts         Claude 格式接口（/v1/messages，官方 SDK）
-│
-├── storage/MemoryStore.ts  读写 <记忆目录>/<noteId>.json
-├── identity/               笔记身份管理
-│   ├── NoteIndex.ts        noteId → 路径索引、重复检测（纯数据结构）
-│   ├── ObsidianNoteGateway.ts  读正文、读写 review-id
-│   └── IdentityWatcher.ts  监听修改、重命名、删除事件
-├── review/ReviewService.ts 生成、重新生成、忽略变化、反馈的业务流程
-├── push/PushController.ts  定时检查、额度、推送哪张卡片
-├── platform/obsidianHttp.ts  用 requestUrl 实现 HttpClient
-│
-└── ui/                     界面，只负责显示和收集操作
-    ├── CardView.ts         侧边栏卡片
-    ├── CardPanel.ts        打开或复用侧边栏卡片（CardPresenter 的实现）
-    ├── NoteActions.ts      笔记右上角图标和菜单
-    ├── ReviewActions.ts    用户操作入口：调用业务层并显示提示
-    ├── StatusBar.ts        状态栏"待复习 N"
-    ├── SettingTab.ts       设置页
-    └── modals.ts           调试用对话框
-```
-
-## 常见修改去哪里改
-
-| 想改的东西 | 改哪里 |
-|---|---|
-| 换记忆曲线算法（SM-2、FSRS） | `core/scheduler.ts`；需要新字段时在 `core/types.ts` 加字段，并在 `core/memoryFile.ts` 的 `migrate` 中升级版本 |
-| 推送排序规则 | `core/picker.ts` 的 `compareDue` |
-| 什么时候推送、额度怎么算 | `push/PushController.ts` |
-| 出题风格、题数要求 | `llm/prompt.ts` |
-| 接入新的 LLM 服务商 | 在 `llm/providers/` 实现 `ChatProvider`，并在 `providers/index.ts` 注册 |
-| 卡片改回弹窗 | 新写一个实现 `CardPresenter` 的类，替换 `main.ts` 中的 `CardPanel` |
-| 卡片样式和布局 | `ui/CardView.ts`、`styles.css` |
-| 图标菜单的选项 | `ui/NoteActions.ts` |
-| 新的设置项 | `settings.ts` 加字段和默认值，`ui/SettingTab.ts` 加输入框 |
+[MIT](./LICENSE)

@@ -1,9 +1,9 @@
 {
-  "id": "automem",
-  "name": "AutoMem 笔记复习",
+  "id": "recall-cards",
+  "name": "Recall Cards",
   "version": "0.1.0",
   "minAppVersion": "1.7.2",
-  "description": "让 LLM 根据笔记出题，按记忆曲线推送复习卡片。",
-  "author": "",
+  "description": "Generate recall questions from your notes with an LLM and review them on a spaced-repetition schedule.",
+  "author": "lizhichao",
   "isDesktopOnly": true
 }
