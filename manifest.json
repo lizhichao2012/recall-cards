@@ -1,7 +1,7 @@
 {
   "id": "recall-cards",
   "name": "Recall Cards",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minAppVersion": "1.7.2",
   "description": "Generate recall questions from your notes with an LLM and review them on a spaced-repetition schedule.",
   "author": "lizhichao",
