@@ -65,12 +65,12 @@ export class TimelineModal extends Modal {
     const head = table.createEl("tr");
     head.createEl("th", { text: "次序" });
     head.createEl("th", { text: "日期" });
-    head.createEl("th", { text: "复习时的档位" });
+    head.createEl("th", { text: "距上次复习" });
     this.points.forEach((p, i) => {
       const row = table.createEl("tr");
       row.createEl("td", { text: String(i + 1) });
       row.createEl("td", { text: p.date });
-      row.createEl("td", { text: `第 ${p.level + 1} 档` });
+      row.createEl("td", { text: `${p.gap} 天` });
     });
   }
 

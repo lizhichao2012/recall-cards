@@ -1,15 +1,17 @@
 // 记忆文件的创建、校验和版本迁移。读文件时统一走 parseMemoryFile，
-// 第二版改格式时在 migrate 里加分支即可。
+// 改格式时在 migrate 里加分支即可。旧版本的文件只在内存中升级，下次保存时才写回新格式。
 
 import { isDateStr } from "./date";
-import { initSchedule } from "./scheduler";
+import { initSchedule, stateFromHistory } from "./scheduler";
 import {
   MEMORY_FILE_VERSION,
   RATINGS,
   type DateStr,
   type GeneratedQuestion,
+  type HistoryEntry,
   type MemoryFile,
   type Question,
+  type Rating,
 } from "./types";
 
 export function toQuestions(generated: readonly GeneratedQuestion[]): Question[] {
@@ -22,7 +24,6 @@ export interface NewMemoryFileInput {
   contentHash: string;
   questions: readonly GeneratedQuestion[];
   today: DateStr;
-  intervals: readonly number[];
 }
 
 export function createMemoryFile(input: NewMemoryFileInput): MemoryFile {
@@ -33,7 +34,7 @@ export function createMemoryFile(input: NewMemoryFileInput): MemoryFile {
     contentHash: input.contentHash,
     createdAt: input.today,
     questions: toQuestions(input.questions),
-    schedule: initSchedule(input.today, input.intervals),
+    schedule: initSchedule(input.today),
     history: [],
   };
 }
@@ -47,7 +48,31 @@ function fail(msg: string): never {
 function migrate(raw: Record<string, unknown>): Record<string, unknown> {
   const version = raw.version;
   if (version === MEMORY_FILE_VERSION) return raw;
+  if (version === 1) return migrateV1(raw);
   return fail(`不支持的记忆文件版本：${String(version)}`);
+}
+
+/**
+ * 版本 1 → 2：固定间隔表换成 FSRS。去掉 level，按复习记录重放出稳定性和难度。
+ * 已排好的 nextreviewtime 保持不变，升级后不会让所有卡片同时改期。
+ */
+function migrateV1(raw: Record<string, unknown>): Record<string, unknown> {
+  const history = Array.isArray(raw.history) ? (raw.history as HistoryEntry[]) : [];
+  const valid = history.every(
+    (e) => e && isDateStr(e.date) && ("event" in e || RATINGS.includes((e as { rating: Rating }).rating)),
+  );
+  if (!valid) fail("history 中有无法识别的记录");
+  const { level: _level, ...schedule } = (raw.schedule ?? {}) as Record<string, unknown>;
+  const state = stateFromHistory(history);
+  return {
+    ...raw,
+    version: MEMORY_FILE_VERSION,
+    schedule: { ...schedule, stability: state?.stability ?? null, difficulty: state?.difficulty ?? null },
+  };
+}
+
+function isPositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 /** 解析并校验记忆文件，非法时抛出 MemoryFileError */
@@ -70,12 +95,16 @@ export function parseMemoryFile(text: string): MemoryFile {
   const s = obj.schedule as Record<string, unknown> | undefined;
   if (!s || typeof s !== "object") fail("缺少 schedule");
   if (s.status !== "active" && s.status !== "mastered") fail("schedule.status 非法");
-  if (typeof s.level !== "number" || s.level < 0) fail("schedule.level 非法");
   if (!isDateStr(s.starttime)) fail("schedule.starttime 非法");
   if (s.lastreviewtime !== null && !isDateStr(s.lastreviewtime)) fail("schedule.lastreviewtime 非法");
   if (s.nextreviewtime !== null && !isDateStr(s.nextreviewtime)) fail("schedule.nextreviewtime 非法");
   if (s.memory !== null && s.memory !== undefined && !RATINGS.includes(s.memory as never)) {
     fail("schedule.memory 非法");
+  }
+  if (s.stability === null || s.difficulty === null) {
+    if (s.stability !== s.difficulty) fail("schedule.stability 和 difficulty 必须同时为空");
+  } else if (!isPositive(s.stability) || !isPositive(s.difficulty)) {
+    fail("schedule.stability / difficulty 非法");
   }
 
   return {

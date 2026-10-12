@@ -12,15 +12,17 @@ export type ScheduleStatus = "active" | "mastered";
 
 export interface Schedule {
   status: ScheduleStatus;
-  /** 当前档位，间隔表的下标 */
-  level: number;
-  /** 当前这条曲线的起点；"忘了"和"从头记忆"会重置 */
+  /** 当前这条曲线的起点；只有"从头记忆"会重置 */
   starttime: DateStr;
   lastreviewtime: DateStr | null;
   /** mastered 时为 null */
   nextreviewtime: DateStr | null;
   /** 最近一次反馈 */
   memory: Rating | null;
+  /** FSRS 稳定性（天）：记住的概率降到 90% 所需的天数。还没反馈过时为 null */
+  stability: number | null;
+  /** FSRS 难度：1～10。还没反馈过时为 null */
+  difficulty: number | null;
 }
 
 export interface Question {
@@ -40,7 +42,7 @@ export interface RatingEntry {
   manual: boolean;
 }
 
-/** 重新生成事件：第二版算法需要知道曲线在哪里被重置过 */
+/** 重新生成事件：从旧版本升级时，按 reset 事件判断曲线在哪里被重置过 */
 export interface EventEntry {
   date: DateStr;
   event: "regenerate" | "reset";
@@ -48,7 +50,8 @@ export interface EventEntry {
 
 export type HistoryEntry = RatingEntry | EventEntry;
 
-export const MEMORY_FILE_VERSION = 1;
+/** 1：固定间隔表（schedule.level）；2：FSRS（schedule.stability / difficulty） */
+export const MEMORY_FILE_VERSION = 2;
 
 export interface MemoryFile {
   version: number;

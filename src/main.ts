@@ -87,7 +87,7 @@ export default class RecallCardsPlugin extends Plugin implements SettingsHost {
       push: this.push,
       cards,
       notes,
-      intervals: () => this.settings.intervals,
+      scheduler: () => this.settings,
       clock: this.clock,
       onChanged: (path) => {
         if (path) this.noteActions.refreshPath(path);

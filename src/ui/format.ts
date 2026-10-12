@@ -1,13 +1,18 @@
 // 界面上的小工具函数
 
 import { diffDays } from "../core/date";
-import { applyRating, clampLevel } from "../core/scheduler";
+import { applyRating, type SchedulerConfig } from "../core/scheduler";
 import type { DateStr, Rating, Schedule } from "../core/types";
 
 /** "目录/笔记名.md" → "笔记名" */
 export function noteName(path: string): string {
   const base = path.split("/").pop() ?? path;
   return base.replace(/\.md$/i, "");
+}
+
+/** 稳定性等天数：10 天以内保留一位小数 */
+export function formatDays(days: number): string {
+  return days < 10 ? days.toFixed(1) : String(Math.round(days));
 }
 
 /**
@@ -18,20 +23,15 @@ export function describeRatingEffect(
   schedule: Schedule,
   rating: Rating,
   today: DateStr,
-  intervals: readonly number[],
+  config: SchedulerConfig,
 ): string {
-  const next = applyRating(schedule, rating, today, intervals);
+  const next = applyRating(schedule, rating, today, config);
   if (next.status === "mastered" || next.nextreviewtime === null) return "进入长期记忆，不再推送";
-
-  const current = clampLevel(schedule.level, intervals);
-  const levelText = `第 ${next.level + 1} 档`;
-  let change: string;
-  if (rating === "forgot") change = `记忆曲线归零，回到${levelText}`;
-  else if (next.level > current) change = `升到${levelText}`;
-  else if (rating === "good") change = `已是最高档，保持${levelText}`;
-  else change = `保持${levelText}`;
 
   const resume = schedule.status === "mastered" ? "恢复推送，" : "";
   const days = diffDays(today, next.nextreviewtime);
-  return `${resume}${change}，${days} 天后（${next.nextreviewtime}）复习`;
+  const to = `${formatDays(next.stability!)} 天`;
+  const stability =
+    schedule.stability === null ? `记忆稳定性 ${to}` : `记忆稳定性 ${formatDays(schedule.stability)} → ${to}`;
+  return `${resume}${days} 天后（${next.nextreviewtime}）复习；${stability}`;
 }

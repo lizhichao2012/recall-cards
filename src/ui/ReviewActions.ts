@@ -3,6 +3,7 @@
 
 import { Notice, TFile, type App } from "obsidian";
 import type { Clock } from "../core/clock";
+import type { SchedulerConfig } from "../core/scheduler";
 import type { DateStr, Rating, MemoryFile } from "../core/types";
 import { previewTimeline } from "../core/scheduler";
 import type { CardMode, PushController } from "../push/PushController";
@@ -20,7 +21,7 @@ export interface ReviewActionsDeps {
   push: PushController;
   cards: CardPanel;
   notes: NoteGateway;
-  intervals: () => readonly number[];
+  scheduler: () => SchedulerConfig;
   clock: Clock;
   /** 记忆文件或笔记状态变化后刷新界面 */
   onChanged: (path?: string) => void;
@@ -93,7 +94,7 @@ export class ReviewActions implements NoteActionHandlers, CardController {
       new Notice("这篇笔记还没有生成回忆");
       return;
     }
-    const points = previewTimeline(memory.schedule, this.deps.intervals());
+    const points = previewTimeline(memory.schedule, this.deps.scheduler());
     new TimelineModal(this.deps.app, noteName(path), points).open();
   }
 
@@ -139,8 +140,8 @@ export class ReviewActions implements NoteActionHandlers, CardController {
     this.deps.push.onDismissed(noteId, mode);
   }
 
-  intervals(): readonly number[] {
-    return this.deps.intervals();
+  scheduler(): SchedulerConfig {
+    return this.deps.scheduler();
   }
 
   today(): DateStr {

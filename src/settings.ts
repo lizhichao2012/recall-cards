@@ -1,6 +1,6 @@
 // 设置的类型、默认值和校验。不依赖 Obsidian，设置页 UI 在 ui/SettingTab.ts。
 
-import { DEFAULT_INTERVALS } from "./core/scheduler";
+import { DEFAULT_SCHEDULER } from "./core/scheduler";
 import type { LLMConfig } from "./llm/types";
 
 export interface Settings {
@@ -9,8 +9,10 @@ export interface Settings {
   memoryDir: string;
   /** 每天最多推送几张卡片 */
   dailyLimit: number;
-  /** 间隔表（天） */
-  intervals: number[];
+  /** 目标记忆保持率：到期时希望还能记住的概率，越高复习越频繁 */
+  desiredRetention: number;
+  /** 最长间隔（天） */
+  maximumInterval: number;
   /** 正文长度上限（字符数） */
   maxBodyChars: number;
   minQuestions: number;
@@ -31,7 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   memoryDir: "recall-cards",
   dailyLimit: 3,
-  intervals: [...DEFAULT_INTERVALS],
+  desiredRetention: DEFAULT_SCHEDULER.desiredRetention,
+  maximumInterval: DEFAULT_SCHEDULER.maximumInterval,
   maxBodyChars: 20000,
   minQuestions: 3,
   maxQuestions: 7,
@@ -41,12 +44,15 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** 合并已保存的设置和默认值，并修正非法值 */
 export function normalizeSettings(saved: Partial<Settings> | undefined): Settings {
+  // 第一版的 intervals（间隔表）已被 FSRS 取代，丢弃
+  const { intervals: _intervals, ...rest } = (saved ?? {}) as Partial<Settings> & { intervals?: unknown };
   const s: Settings = {
     ...DEFAULT_SETTINGS,
-    ...saved,
-    llm: { ...DEFAULT_SETTINGS.llm, ...saved?.llm },
+    ...rest,
+    llm: { ...DEFAULT_SETTINGS.llm, ...rest.llm },
   };
-  if (!isValidIntervals(s.intervals)) s.intervals = [...DEFAULT_INTERVALS];
+  if (!isValidRetention(s.desiredRetention)) s.desiredRetention = DEFAULT_SETTINGS.desiredRetention;
+  s.maximumInterval = positiveInt(s.maximumInterval, DEFAULT_SETTINGS.maximumInterval, 1);
   s.dailyLimit = positiveInt(s.dailyLimit, DEFAULT_SETTINGS.dailyLimit, 0);
   s.maxBodyChars = positiveInt(s.maxBodyChars, DEFAULT_SETTINGS.maxBodyChars, 1);
   s.minQuestions = positiveInt(s.minQuestions, DEFAULT_SETTINGS.minQuestions, 1);
@@ -64,20 +70,9 @@ export function normalizeDir(dir: string): string {
   return dir.trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
 }
 
-/** 间隔表必须是严格递增的正整数 */
-export function isValidIntervals(value: unknown): value is number[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((n, i) => Number.isInteger(n) && n > 0 && (i === 0 || n > value[i - 1]))
-  );
-}
+export const RETENTION_RANGE = { min: 0.7, max: 0.97 } as const;
 
-/** 解析设置页输入的间隔表，例如 "1, 2, 4, 7"；非法时返回 null */
-export function parseIntervals(text: string): number[] | null {
-  const list = text
-    .split(/[,，\s]+/)
-    .filter(Boolean)
-    .map(Number);
-  return isValidIntervals(list) ? list : null;
+/** 保持率过低时间隔会变得很长，过高时复习量会急剧增加 */
+export function isValidRetention(value: unknown): value is number {
+  return typeof value === "number" && value >= RETENTION_RANGE.min && value <= RETENTION_RANGE.max;
 }

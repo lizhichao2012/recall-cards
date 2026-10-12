@@ -1,6 +1,6 @@
 # Recall Cards
 
-An Obsidian plugin that turns your notes into active-recall questions with an LLM, then brings them back on a spaced-repetition schedule.
+An Obsidian plugin that turns your notes into active-recall questions with an LLM, then brings them back on a spaced-repetition schedule powered by FSRS.
 
 [中文说明](./README.zh-CN.md)
 
@@ -13,13 +13,13 @@ An Obsidian plugin that turns your notes into active-recall questions with an LL
 
    | Button | Meaning | What happens to the schedule |
    |---|---|---|
-   | 忘了 Forgot | Couldn't recall most of it | The curve resets to stage 1 (review again in 1 day) |
-   | 模糊 Fuzzy | Needed the answer or the note | Stays at the current stage |
-   | 记得 Good | Answered correctly | Moves up one stage |
+   | 忘了 Forgot | Couldn't recall it, or only after seeing the answer | Memory stability drops sharply; review again within a few days |
+   | 模糊 Fuzzy | Recalled it, but with real effort | The interval still grows, but less than with Good |
+   | 记得 Good | Answered correctly | Longer interval |
    | 简单 Easy | Effortless | Marked as mastered, no more reviews |
 
-   Hovering over a button shows exactly how the schedule will change and the next review date.
-3. Cards come back when they're due. The default intervals are 1, 2, 4, 7, 15, 30 and 60 days. The plugin checks for due cards every 30 minutes and shows at most 3 per day. The status bar shows how many cards are waiting.
+   Hovering over a button shows the next review date and how the card's memory stability will change.
+3. Cards come back when they're due. Intervals are calculated by the [FSRS](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm) algorithm from each card's review history: the better you know a card, the longer the interval. Early and late reviews are handled using the actual gap. If you keep pressing Good, the intervals are roughly 1, 3, 14, 57 and 196 days, up to a maximum of 365. The plugin checks for due cards every 30 minutes and shows at most 3 per day. The status bar shows how many cards are waiting.
 4. If you edit a note after generating questions, the icon changes color. You can then regenerate the questions and keep your progress, regenerate and restart the curve, or ignore the change.
 
 ## Installation
@@ -45,7 +45,7 @@ Open **Settings → Recall Cards** and configure an LLM provider:
 
 Then fill in the model name and API key. With the Claude format, an empty model field defaults to `claude-opus-5-5`.
 
-Other settings: the review intervals, daily push limit, number of questions per note, maximum note length, and the folder where review data is stored.
+Other settings: desired retention (90% by default; higher means more frequent reviews), maximum interval, daily push limit, number of questions per note, maximum note length, and the folder where review data is stored.
 
 ## Privacy and data
 

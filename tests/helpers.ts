@@ -1,11 +1,12 @@
+import { DEFAULT_SCHEDULER } from "../src/core/scheduler";
 import type { MemoryFile, Schedule } from "../src/core/types";
 import type { FileAdapter } from "../src/storage/MemoryStore";
 
-export const INTERVALS = [1, 2, 4, 7, 15, 30, 60];
+export const SCHEDULER = DEFAULT_SCHEDULER;
 
 export function makeMemory(noteId: string, schedule: Partial<Schedule> = {}, source = `${noteId}.md`): MemoryFile {
   return {
-    version: 1,
+    version: 2,
     noteId,
     source,
     contentHash: "sha256:x",
@@ -13,11 +14,12 @@ export function makeMemory(noteId: string, schedule: Partial<Schedule> = {}, sou
     questions: [{ question: "Q", answer: "A", row: 0, memory: null }],
     schedule: {
       status: "active",
-      level: 0,
       starttime: "2026-10-01",
       lastreviewtime: null,
       nextreviewtime: "2026-10-02",
       memory: null,
+      stability: null,
+      difficulty: null,
       ...schedule,
     },
     history: [],

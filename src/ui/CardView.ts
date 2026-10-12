@@ -2,10 +2,10 @@
 // 只负责显示和收集操作，业务逻辑通过 CardController 交给外部处理。
 
 import { Component, ItemView, MarkdownRenderer, type WorkspaceLeaf } from "obsidian";
-import { intervalOf } from "../core/scheduler";
+import { currentRetrievability, type SchedulerConfig } from "../core/scheduler";
 import type { DateStr, MemoryFile, Rating } from "../core/types";
 import type { CardMode } from "../push/PushController";
-import { describeRatingEffect, noteName } from "./format";
+import { describeRatingEffect, formatDays, noteName } from "./format";
 
 export const CARD_VIEW_TYPE = "recall-cards-view";
 
@@ -18,14 +18,14 @@ export interface CardController {
   openNext(noteId: string): Promise<void>;
   /** 卡片未反馈就被关闭或被替换 */
   dismissed(noteId: string, mode: CardMode): void;
-  intervals(): readonly number[];
+  scheduler(): SchedulerConfig;
   /** 今天的日期（调试时可能是模拟日期），用于推算反馈后的下次复习时间 */
   today(): DateStr;
 }
 
 const RATING_BUTTONS: { rating: Rating; label: string; hint: string }[] = [
-  { rating: "forgot", label: "忘了", hint: "大部分想不起来" },
-  { rating: "fuzzy", label: "模糊", hint: "看了答案或原文才想起来" },
+  { rating: "forgot", label: "忘了", hint: "想不起来，或看了答案才想起来" },
+  { rating: "fuzzy", label: "模糊", hint: "想起来了，但很吃力" },
   { rating: "good", label: "记得", hint: "可以正确回答问题" },
   { rating: "easy", label: "简单", hint: "轻松答出，不再推送" },
 ];
@@ -147,7 +147,14 @@ export class CardView extends ItemView {
     const s = memory.schedule;
     const meta = header.createDiv({ cls: "recall-cards-meta" });
     meta.createSpan({ cls: "recall-cards-badge", text: mode === "push" ? "推送" : "手动" });
-    meta.createSpan({ text: `第 ${s.level + 1} 档（间隔 ${intervalOf(s.level, this.controller.intervals())} 天）` });
+    const r = currentRetrievability(s, this.controller.today());
+    if (s.stability === null || r === null) meta.createSpan({ text: "首次复习" });
+    else {
+      meta.createSpan({
+        text: `记住的概率约 ${Math.round(r * 100)}%`,
+        attr: { "aria-label": `记忆稳定性 ${formatDays(s.stability)} 天：过这么多天后，记住的概率降到 90%` },
+      });
+    }
     meta.createSpan({
       text: s.status === "mastered" ? "已进入长期记忆" : `下次复习：${s.nextreviewtime ?? "—"}`,
     });
@@ -186,7 +193,7 @@ export class CardView extends ItemView {
     for (const { rating, label, hint } of RATING_BUTTONS) {
       // 待反馈时提示点击后的曲线变化；已反馈后档位已更新，只保留说明
       const tooltip = enabled
-        ? `${hint}\n点击后：${describeRatingEffect(state.memory.schedule, rating, this.controller.today(), this.controller.intervals())}`
+        ? `${hint}\n点击后：${describeRatingEffect(state.memory.schedule, rating, this.controller.today(), this.controller.scheduler())}`
         : hint;
       const btn = buttons.createEl("button", { text: label, attr: { "aria-label": tooltip } });
       btn.addClass(`recall-cards-rating-${rating}`);

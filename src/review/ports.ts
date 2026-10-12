@@ -10,6 +10,4 @@ export interface NoteGateway {
   pathOf(noteId: string): string | null;
 }
 
-export interface ReviewSettings {
-  intervals: readonly number[];
-}
+export type { SchedulerConfig as ReviewSettings } from "../core/scheduler";

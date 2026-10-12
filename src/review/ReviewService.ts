@@ -66,7 +66,7 @@ export class ReviewService {
 
   /** 首次生成回忆。点击的这一天就是记忆曲线的起点。 */
   async generate(path: string): Promise<MemoryFile> {
-    const { notes, store, clock, settings, newId } = this.deps;
+    const { notes, store, clock, newId } = this.deps;
     const existingId = notes.getReviewId(path);
     if (existingId && store.get(existingId)) {
       if (notes.pathOf(existingId) !== path) {
@@ -86,7 +86,6 @@ export class ReviewService {
         contentHash: await this.hash(body),
         questions,
         today: clock.today(),
-        intervals: settings().intervals,
       });
       // 先写记忆文件，成功后再写 frontmatter，避免出现有 id 却没有记忆文件的笔记
       await store.save(memory);
@@ -98,7 +97,7 @@ export class ReviewService {
   /** 重新生成：keep 只换题目；reset 换题目并让记忆曲线归零 */
   async regenerate(noteId: string, mode: RegenerateMode): Promise<MemoryFile> {
     const { memory, path } = this.requireNote(noteId);
-    const { clock, settings } = this.deps;
+    const { clock } = this.deps;
 
     return this.withBusy(path, async () => {
       const body = await this.deps.notes.readBody(path);
@@ -109,7 +108,7 @@ export class ReviewService {
         source: path,
         contentHash: await this.hash(body),
         questions: toQuestions(questions),
-        schedule: mode === "reset" ? resetSchedule(today, settings().intervals) : memory.schedule,
+        schedule: mode === "reset" ? resetSchedule(today) : memory.schedule,
         history: [...memory.history, { date: today, event: mode === "reset" ? "reset" : "regenerate" }],
       };
       await this.deps.store.save(updated);
@@ -133,7 +132,7 @@ export class ReviewService {
     const today = clock.today();
     const updated: MemoryFile = {
       ...memory,
-      schedule: applyRating(memory.schedule, rating, today, settings().intervals),
+      schedule: applyRating(memory.schedule, rating, today, settings()),
       history: [...memory.history, { date: today, rating, manual }],
     };
     await this.deps.store.save(updated);

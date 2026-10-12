@@ -3,7 +3,7 @@
 import { App, PluginSettingTab, Setting, type Plugin } from "obsidian";
 import { baseUrlAfterSwitch, providerInfo, providerOptions } from "../llm/providers";
 import type { ProviderId } from "../llm/types";
-import { normalizeDir, parseIntervals, type Settings } from "../settings";
+import { normalizeDir, RETENTION_RANGE, type Settings } from "../settings";
 
 export interface SettingsHost {
   settings: Settings;
@@ -147,17 +147,30 @@ export class RecallCardsSettingTab extends PluginSettingTab {
     );
 
     new Setting(containerEl)
-      .setName("间隔表（天）")
-      .setDesc("严格递增的正整数，用逗号分隔。缩短后，超出范围的档位会按最后一档计算。")
-      .addText((t) =>
-        t.setValue(s.intervals.join(", ")).onChange(async (v) => {
-          const list = parseIntervals(v);
-          if (list) {
-            s.intervals = list;
+      .setName("目标记忆保持率")
+      .setDesc(
+        "卡片到期时，希望还能记住的概率。调高后复习更频繁，调低后间隔更长。修改后从下一次反馈开始生效，已排好的复习日期不变。",
+      )
+      .addSlider((sl) =>
+        sl
+          .setLimits(RETENTION_RANGE.min, RETENTION_RANGE.max, 0.01)
+          .setValue(s.desiredRetention)
+          .setDynamicTooltip()
+          .onChange(async (v) => {
+            s.desiredRetention = Math.round(v * 100) / 100;
             await save();
-          }
-        }),
+          }),
       );
+
+    new Setting(containerEl).setName("最长间隔（天）").setDesc("两次复习之间最多隔多少天。").addText((t) =>
+      t.setValue(String(s.maximumInterval)).onChange(async (v) => {
+        const n = Number(v);
+        if (Number.isInteger(n) && n >= 1) {
+          s.maximumInterval = n;
+          await save();
+        }
+      }),
+    );
 
     new Setting(containerEl).setName("检查间隔（分钟）").setDesc("多久检查一次是否有到期卡片。").addText((t) =>
       t.setValue(String(s.checkIntervalMinutes)).onChange(async (v) => {

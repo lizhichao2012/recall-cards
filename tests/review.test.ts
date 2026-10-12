@@ -5,7 +5,7 @@ import { GenerationError } from "../src/llm/errors";
 import type { NoteGateway } from "../src/review/ports";
 import { ReviewService } from "../src/review/ReviewService";
 import { VaultMemoryStore } from "../src/storage/MemoryStore";
-import { INTERVALS, MemoryAdapter, makeMemory } from "./helpers";
+import { MemoryAdapter, makeMemory, SCHEDULER } from "./helpers";
 
 /** 内存版笔记库 */
 class FakeNotes implements NoteGateway {
@@ -56,7 +56,7 @@ describe("ReviewService", () => {
       store,
       notes,
       clock,
-      settings: () => ({ intervals: INTERVALS }),
+      settings: () => SCHEDULER,
       newId: () => `id${++ids}`,
       generator: {
         generate: async () => {
@@ -120,7 +120,13 @@ describe("ReviewService", () => {
     await review.rate(m.noteId, "good", false);
     clock.setOverride("2026-10-08");
     const after = await review.regenerate(m.noteId, "reset");
-    expect(after.schedule).toMatchObject({ level: 0, starttime: "2026-10-08", lastreviewtime: null, nextreviewtime: "2026-10-09" });
+    expect(after.schedule).toMatchObject({
+      starttime: "2026-10-08",
+      lastreviewtime: null,
+      nextreviewtime: "2026-10-09",
+      stability: null,
+      difficulty: null,
+    });
     expect(after.createdAt).toBe("2026-10-03");
     expect(after.history.at(-1)).toEqual({ date: "2026-10-08", event: "reset" });
   });
@@ -129,7 +135,7 @@ describe("ReviewService", () => {
     const m = await review.generate("a.md");
     clock.setOverride("2026-10-04");
     const after = await review.rate(m.noteId, "good", true);
-    expect(after.schedule).toMatchObject({ level: 1, nextreviewtime: "2026-10-06", memory: "good" });
+    expect(after.schedule).toMatchObject({ nextreviewtime: "2026-10-07", memory: "good", stability: 2.3065 });
     expect(after.history).toEqual([{ date: "2026-10-04", rating: "good", manual: true }]);
     // 重启后数据一致
     const reloaded = new VaultMemoryStore(adapter, () => "recall-cards");

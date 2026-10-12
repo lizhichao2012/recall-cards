@@ -1,101 +1,111 @@
-// 调度：纯函数，对应设计方案 2.2.3 的状态变化规则表。
-// 第二版要换成 SM-2 / FSRS 时，只需替换这个文件里的函数实现。
+// 调度：纯函数，对应设计方案第六节"FSRS 调度"。把 FSRS 记忆模型（fsrs.ts）接到记忆文件的 schedule 上。
+// 时间精度为"天"，下次复习时间一律按实际复习日期（today）计算。
 
-import { addDays } from "./date";
-import type { DateStr, Rating, Schedule } from "./types";
+import { addDays, diffDays } from "./date";
+import { nextState, outcomes, retrievability, type Grade, type MemoryState } from "./fsrs";
+import type { DateStr, HistoryEntry, Rating, Schedule } from "./types";
 
-export const DEFAULT_INTERVALS: readonly number[] = [1, 2, 4, 7, 15, 30, 60];
-
-/** 最高档位。间隔表可配置，所以不写死为 6。 */
-export function maxLevel(intervals: readonly number[]): number {
-  return intervals.length - 1;
+export interface SchedulerConfig {
+  /** 目标记忆保持率：到期时希望还能记住的概率 */
+  desiredRetention: number;
+  /** 最长间隔（天） */
+  maximumInterval: number;
 }
 
-/** 间隔表变短后，旧文件里的档位可能越界，统一夹到合法范围。 */
-export function clampLevel(level: number, intervals: readonly number[]): number {
-  return Math.max(0, Math.min(level, maxLevel(intervals)));
+export const DEFAULT_SCHEDULER: SchedulerConfig = { desiredRetention: 0.9, maximumInterval: 365 };
+
+/** 四个按钮对应的 FSRS 评分。"简单"按 Easy 更新记忆状态，但卡片进入长期记忆、不再推送。 */
+export const GRADE_OF: Record<Rating, Grade> = { forgot: 1, fuzzy: 2, good: 3, easy: 4 };
+
+export function memoryState(schedule: Schedule): MemoryState | null {
+  const { stability, difficulty } = schedule;
+  return stability === null || difficulty === null ? null : { stability, difficulty };
 }
 
-export function intervalOf(level: number, intervals: readonly number[]): number {
-  return intervals[clampLevel(level, intervals)];
+/** 距上次复习的天数；从未复习过时为 0。模拟日期往回调时不会出现负数。 */
+function elapsedDays(schedule: Schedule, today: DateStr): number {
+  return schedule.lastreviewtime ? Math.max(0, diffDays(schedule.lastreviewtime, today)) : 0;
 }
 
-/** 首次生成 */
-export function initSchedule(today: DateStr, intervals: readonly number[]): Schedule {
+/** 首次生成：还没复习过，第二天第一次复习 */
+export function initSchedule(today: DateStr): Schedule {
   return {
     status: "active",
-    level: 0,
     starttime: today,
     lastreviewtime: null,
-    nextreviewtime: addDays(today, intervalOf(0, intervals)),
+    nextreviewtime: addDays(today, 1),
     memory: null,
+    stability: null,
+    difficulty: null,
   };
 }
 
-/** 重新生成（从头记忆）：曲线归零，和首次生成相同 */
-export function resetSchedule(today: DateStr, intervals: readonly number[]): Schedule {
-  return initSchedule(today, intervals);
+/** 重新生成（从头记忆）：记忆状态清空，和首次生成相同 */
+export function resetSchedule(today: DateStr): Schedule {
+  return initSchedule(today);
 }
 
-/** 根据反馈计算新状态。下次复习时间一律按实际复习日期（today）计算。 */
+/** 根据反馈计算新状态。提前复习、推迟复习都按实际间隔计算。 */
 export function applyRating(
   schedule: Schedule,
   rating: Rating,
   today: DateStr,
-  intervals: readonly number[],
+  config: SchedulerConfig,
 ): Schedule {
-  const level = clampLevel(schedule.level, intervals);
-  const base = { ...schedule, level, lastreviewtime: today, memory: rating };
+  const outcome = outcomes(memoryState(schedule), elapsedDays(schedule, today), config)[GRADE_OF[rating]];
+  const base: Schedule = {
+    ...schedule,
+    lastreviewtime: today,
+    memory: rating,
+    stability: outcome.state.stability,
+    difficulty: outcome.state.difficulty,
+  };
+  if (rating === "easy") return { ...base, status: "mastered", nextreviewtime: null };
+  return { ...base, status: "active", nextreviewtime: addDays(today, outcome.interval) };
+}
 
-  switch (rating) {
-    case "forgot":
-      return {
-        ...base,
-        status: "active",
-        level: 0,
-        starttime: today,
-        nextreviewtime: addDays(today, intervalOf(0, intervals)),
-      };
-    case "fuzzy":
-      return {
-        ...base,
-        status: "active",
-        nextreviewtime: addDays(today, intervalOf(level, intervals)),
-      };
-    case "good": {
-      const next = Math.min(level + 1, maxLevel(intervals));
-      return {
-        ...base,
-        status: "active",
-        level: next,
-        nextreviewtime: addDays(today, intervalOf(next, intervals)),
-      };
+/** 今天记住的概率；还没复习过时返回 null */
+export function currentRetrievability(schedule: Schedule, today: DateStr): number | null {
+  const state = memoryState(schedule);
+  return state ? retrievability(elapsedDays(schedule, today), state.stability) : null;
+}
+
+/**
+ * 按复习记录重放出记忆状态，用于从固定间隔表（版本 1）升级。
+ * reset 事件之后从新卡片开始；regenerate（记忆保持）不影响记忆状态。
+ */
+export function stateFromHistory(history: readonly HistoryEntry[]): MemoryState | null {
+  let state: MemoryState | null = null;
+  let last: DateStr | null = null;
+  for (const entry of history) {
+    if ("event" in entry) {
+      if (entry.event === "reset") [state, last] = [null, null];
+      continue;
     }
-    case "easy":
-      return { ...base, status: "mastered", nextreviewtime: null };
+    const t = last ? Math.max(0, diffDays(last, entry.date)) : 0;
+    state = nextState(state, t, GRADE_OF[entry.rating]);
+    last = entry.date;
   }
+  return state;
 }
 
 export interface TimelinePoint {
   date: DateStr;
-  level: number;
+  /** 距上一次复习的天数（第一次复习时距生成日期） */
+  gap: number;
 }
 
 /**
  * 时间轴预测：假设每次都在到期当天点"记得"，未来各次复习的日期。
  * 用于调试命令"查看时间轴"。mastered 的卡片不再推送，返回空数组。
  */
-export function previewTimeline(
-  schedule: Schedule,
-  intervals: readonly number[],
-  steps = intervals.length + 1,
-): TimelinePoint[] {
-  if (schedule.status === "mastered" || schedule.nextreviewtime === null) return [];
+export function previewTimeline(schedule: Schedule, config: SchedulerConfig, steps = 8): TimelinePoint[] {
   const points: TimelinePoint[] = [];
   let current = schedule;
-  for (let i = 0; i < steps && current.nextreviewtime; i++) {
-    points.push({ date: current.nextreviewtime, level: current.level });
-    current = applyRating(current, "good", current.nextreviewtime, intervals);
+  for (let i = 0; i < steps && current.status === "active" && current.nextreviewtime; i++) {
+    const date = current.nextreviewtime;
+    points.push({ date, gap: diffDays(current.lastreviewtime ?? current.starttime, date) });
+    current = applyRating(current, "good", date, config);
   }
   return points;
 }
